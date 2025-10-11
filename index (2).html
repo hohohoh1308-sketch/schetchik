@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Telegram User App</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        }
+
+        body {
+            background: var(--tg-theme-bg-color, #ffffff);
+            color: var(--tg-theme-text-color, #000000);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 100%;
+            padding: 16px;
+        }
+
+        .tab-navigation {
+            display: flex;
+            background: var(--tg-theme-secondary-bg-color, #f4f4f4);
+            border-radius: 12px;
+            padding: 4px;
+            margin-bottom: 20px;
+        }
+
+        .tab-button {
+            flex: 1;
+            padding: 12px;
+            text-align: center;
+            background: none;
+            border: none;
+            color: var(--tg-theme-text-color, #000000);
+            font-weight: 500;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .tab-button.active {
+            background: var(--tg-theme-button-color, #2481cc);
+            color: var(--tg-theme-button-text-color, #ffffff);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .search-container {
+            position: relative;
+            margin-bottom: 20px;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 16px;
+            border: none;
+            border-radius: 12px;
+            background: var(--tg-theme-secondary-bg-color, #f4f4f4);
+            color: var(--tg-theme-text-color, #000000);
+            font-size: 16px;
+            outline: none;
+        }
+
+        .search-input::placeholder {
+            color: var(--tg-theme-hint-color, #999999);
+        }
+
+        .user-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .user-card {
+            background: var(--tg-theme-secondary-bg-color, #f4f4f4);
+            padding: 16px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .user-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: var(--tg-theme-button-color, #2481cc);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+            font-size: 18px;
+        }
+
+        .user-info {
+            flex: 1;
+        }
+
+        .user-name {
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .user-username {
+            color: var(--tg-theme-hint-color, #999999);
+            font-size: 14px;
+        }
+
+        .user-id {
+            color: var(--tg-theme-hint-color, #999999);
+            font-size: 12px;
+            font-family: monospace;
+        }
+
+        .search-results {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: var(--tg-theme-bg-color, #ffffff);
+            border-radius: 12px;
+            margin-top: 8px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            max-height: 300px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+        }
+
+        .search-results.active {
+            display: block;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--tg-theme-hint-color, #999999);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: var(--tg-theme-secondary-bg-color, #f4f4f4);
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--tg-theme-button-color, #2481cc);
+            margin-bottom: 4px;
+        }
+
+        .stat-label {
+            font-size: 14px;
+            color: var(--tg-theme-hint-color, #999999);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .highlight {
+            background-color: rgba(255, 235, 0, 0.3);
+            padding: 2px 4px;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="tab-navigation">
+            <button class="tab-button active" data-tab="search">Поиск</button>
+            <button class="tab-button" data-tab="users">Все пользователи</button>
+            <button class="tab-button" data-tab="stats">Статистика</button>
+        </div>
+
+        <div id="search-tab" class="tab-content active">
+            <div class="search-container">
+                <input type="text" class="search-input" id="search-input" 
+                       placeholder="Найти пользователя через @username...">
+                <div class="search-results" id="search-results"></div>
+            </div>
+            <div id="search-user-list" class="user-list"></div>
+        </div>
+
+        <div id="users-tab" class="tab-content">
+            <div id="all-user-list" class="user-list"></div>
+        </div>
+
+        <div id="stats-tab" class="tab-content">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number" id="total-users">0</div>
+                    <div class="stat-label">Всего пользователей</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="today-users">0</div>
+                    <div class="stat-label">Сегодня</div>
+                </div>
+            </div>
+            <div id="stats-user-list" class="user-list"></div>
+        </div>
+    </div>
+
+    <script>
+        class TelegramUserApp {
+            constructor() {
+                this.tg = window.Telegram.WebApp;
+                this.users = this.loadUsers();
+                this.currentUser = null;
+                this.init();
+            }
+
+            init() {
+                this.tg.expand();
+                this.tg.ready();
+                
+                this.setupTabs();
+                this.setupSearch();
+                this.processCurrentUser();
+                this.renderAllUsers();
+                this.updateStats();
+            }
+
+            setupTabs() {
+                const tabButtons = document.querySelectorAll('.tab-button');
+                tabButtons.forEach(button => {
+                    button.addEventListener('click', () => {
+                        const tabName = button.getAttribute('data-tab');
+                        
+                        tabButtons.forEach(btn => btn.classList.remove('active'));
+                        document.querySelectorAll('.tab-content').forEach(content => 
+                            content.classList.remove('active'));
+                        
+                        button.classList.add('active');
+                        document.getElementById(`${tabName}-tab`).classList.add('active');
+                        
+                        if (tabName === 'stats') {
+                            this.updateStats();
+                        }
+                    });
+                });
+            }
+
+            setupSearch() {
+                const searchInput = document.getElementById('search-input');
+                const searchResults = document.getElementById('search-results');
+
+                searchInput.addEventListener('input', (e) => {
+                    const query = e.target.value.toLowerCase().trim();
+                    
+                    if (query.startsWith('@')) {
+                        const searchTerm = query.slice(1);
+                        this.showSearchResults(searchTerm);
+                    } else {
+                        searchResults.classList.remove('active');
+                        this.renderSearchUsers([]);
+                    }
+                });
+
+                document.addEventListener('click', (e) => {
+                    if (!searchInput.contains(e.target) && !searchResults.contains(e.target)) {
+                        searchResults.classList.remove('active');
+                    }
+                });
+            }
+
+            showSearchResults(searchTerm) {
+                const results = this.users.filter(user => 
+                    (user.username && user.username.toLowerCase().includes(searchTerm)) ||
+                    (user.firstName && user.firstName.toLowerCase().includes(searchTerm)) ||
+                    (user.lastName && user.lastName.toLowerCase().includes(searchTerm))
+                );
+
+                this.renderSearchResults(results, searchTerm);
+            }
+
+            renderSearchResults(users, searchTerm) {
+                const searchResults = document.getElementById('search-results');
+                
+                if (users.length === 0) {
+                    searchResults.innerHTML = '<div class="empty-state">Пользователи не найдены</div>';
+                    searchResults.classList.add('active');
+                    return;
+                }
+
+                searchResults.innerHTML = users.slice(0, 5).map(user => `
+                    <div class="user-card" onclick="app.selectSearchResult(${user.id})">
+                        <div class="user-avatar">
+                            ${this.getAvatarInitials(user)}
+                        </div>
+                        <div class="user-info">
+                            <div class="user-name">${this.highlightText(this.getFullName(user), searchTerm)}</div>
+                            ${user.username ? `<div class="user-username">@${this.highlightText(user.username, searchTerm)}</div>` : ''}
+                        </div>
+                    </div>
+                `).join('');
+
+                searchResults.classList.add('active');
+            }
+
+            highlightText(text, searchTerm) {
+                if (!searchTerm) return text;
+                const regex = new RegExp(`(${searchTerm})`, 'gi');
+                return text.replace(regex, '<span class="highlight">$1</span>');
+            }
+
+            selectSearchResult(userId) {
+                const user = this.users.find(u => u.id === userId);
+                if (user) {
+                    const userList = document.getElementById('search-user-list');
+                    userList.innerHTML = `
+                        <div class="user-card">
+                            <div class="user-avatar">
+                                ${this.getAvatarInitials(user)}
+                            </div>
+                            <div class="user-info">
+                                <div class="user-name">${this.getFullName(user)}</div>
+                                ${user.username ? `<div class="user-username">@${user.username}</div>` : ''}
+                                <div class="user-id">ID: ${user.id}</div>
+                                <div class="user-id">Зашел: ${new Date(user.joinDate).toLocaleDateString('ru-RU')}</div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    document.getElementById('search-results').classList.remove('active');
+                    document.getElementById('search-input').value = '';
+                }
+            }
+
+            processCurrentUser() {
+                const initData = this.tg.initDataUnsafe;
+                
+                if (initData.user) {
+                    const tgUser = initData.user;
+                    const userData = {
+                        id: tgUser.id,
+                        firstName: tgUser.first_name || '',
+                        lastName: tgUser.last_name || '',
+                        username: tgUser.username || '',
+                        languageCode: tgUser.language_code || '',
+                        isPremium: tgUser.is_premium || false,
+                        joinDate: new Date().toISOString()
+                    };
+
+                    const existingUserIndex = this.users.findIndex(u => u.id === userData.id);
+                    
+                    if (existingUserIndex === -1) {
+                        this.users.push(userData);
+                    } else {
+                        this.users[existingUserIndex] = { ...this.users[existingUserIndex], ...userData };
+                    }
+                    
+                    this.currentUser = userData;
+                    this.saveUsers();
+                }
+            }
+
+            renderAllUsers() {
+                const userList = document.getElementById('all-user-list');
+                this.renderUserList(userList, this.users);
+            }
+
+            renderSearchUsers(users) {
+                const userList = document.getElementById('search-user-list');
+                this.renderUserList(userList, users);
+            }
+
+            renderUserList(container, users) {
+                if (users.length === 0) {
+                    container.innerHTML = '<div class="empty-state">Пользователи не найдены</div>';
+                    return;
+                }
+
+                container.innerHTML = users.map(user => `
+                    <div class="user-card">
+                        <div class="user-avatar">
+                            ${this.getAvatarInitials(user)}
+                        </div>
+                        <div class="user-info">
+                            <div class="user-name">${this.getFullName(user)}</div>
+                            ${user.username ? `<div class="user-username">@${user.username}</div>` : ''}
+                            <div class="user-id">ID: ${user.id}</div>
+                            <div class="user-id">Зашел: ${new Date(user.joinDate).toLocaleDateString('ru-RU')}</div>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            updateStats() {
+                const today = new Date().toDateString();
+                const todayUsers = this.users.filter(user => 
+                    new Date(user.joinDate).toDateString() === today
+                );
+
+                document.getElementById('total-users').textContent = this.users.length;
+                document.getElementById('today-users').textContent = todayUsers.length;
+
+                const statsList = document.getElementById('stats-user-list');
+                this.renderUserList(statsList, this.users.slice(0, 10));
+            }
+
+            getFullName(user) {
+                return [user.firstName, user.lastName].filter(Boolean).join(' ');
+            }
+
+            getAvatarInitials(user) {
+                const first = user.firstName ? user.firstName[0].toUpperCase() : '';
+                const last = user.lastName ? user.lastName[0].toUpperCase() : '';
+                return first + last || 'U';
+            }
+
+            loadUsers() {
+                try {
+                    const stored = localStorage.getItem('telegram-app-users');
+                    return stored ? JSON.parse(stored) : [];
+                } catch (e) {
+                    console.error('Error loading users:', e);
+                    return [];
+                }
+            }
+
+            saveUsers() {
+                try {
+                    localStorage.setItem('telegram-app-users', JSON.stringify(this.users));
+                } catch (e) {
+                    console.error('Error saving users:', e);
+                }
+            }
+        }
+
+        const app = new TelegramUserApp();
+    </script>
+</body>
+</html>
