@@ -1,1 +1,1 @@
-tg.disableVerticalSwipes(); // Отключает вертикальные свайпы
+tg.disableVerticalSwipes(); // Отключает вертикальные свайпы 
