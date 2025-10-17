@@ -208,11 +208,11 @@
             
             // Случайная позиция
             mesh.position.x = (Math.random() - 0.5) * 9;
-            mesh.position.y = (Math.random() - 0.5) * 7;
-            mesh.position.z = (Math.random() - 0.5) * 5;
+            mesh.position.y = (Math.random() - 0.5) * 15;
+            mesh.position.z = (Math.random() - 0.5) * 6;
 
             // Случайный размер
-            const scale = 0.5 + Math.random() * 0.5;
+            const scale = 0.5 + Math.random() * 0.3;
             mesh.scale.set(scale, scale, scale);
 
             // Сохраняем данные для анимации
@@ -231,7 +231,7 @@
             geometries.push(mesh);
 
             // Ограничиваем количество фигур
-            if (geometries.length > 8) {
+            if (geometries.length > 5) {
                 const oldMesh = geometries.shift();
                 scene.remove(oldMesh);
             }
