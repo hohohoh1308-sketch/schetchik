@@ -1,271 +1,359 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simple TMA</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>3D Анимация в Telegram</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+        }
+
         body {
             margin: 0;
             padding: 0;
-            /* 
-            Чтобы изменить фон всего приложения:
-            1. Замените #2b2d31 на любой цвет (например: #ff0000 для красного)
-            2. Или используйте картинку: background: url('your-image.jpg');
-            */
-            background: #2b2d31;
+            overflow: hidden;
+            background: var(--tg-theme-bg-color, #000000);
+            color: var(--tg-theme-text-color, #ffffff);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            position: fixed;
+            width: 100%;
+            height: 100%;
+        }
+
+        #canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        .ui-panel {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 2;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 20px;
+            min-width: 300px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .btn {
+            background: var(--tg-theme-button-color, #3390ec);
+            color: var(--tg-theme-button-text-color, #ffffff);
+            border: none;
+            border-radius: 12px;
+            padding: 12px 24px;
+            margin: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+
+        .controls {
             display: flex;
             justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            font-family: 'Segoe UI', sans-serif;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 15px;
         }
 
-        .container {
-            text-align: center;
-        }
-
-        .main-button {
-            /* 
-            Настройки кнопки:
-            - background: цвет кнопки
-            - color: цвет текста
-            - padding: размер кнопки
-            - border-radius: скругление углов
-            - font-size: размер текста
-            */
-            background: #007aff;
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
             color: white;
-            border: none;
-            padding: 20px 40px;
-            border-radius: 15px;
             font-size: 18px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            z-index: 3;
         }
 
-        /* Эффекты при наведении и нажатии */
-        .main-button:hover {
-            background: #0056cc;
-            transform: translateY(-2px);
-        }
-
-        .main-button:active {
-            transform: translateY(1px);
+        .hidden {
+            display: none;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <button class="main-button" onclick="handleClick()">Нажми меня</button>
+    <div id="canvas-container"></div>
+    <div class="loading" id="loading">Загрузка 3D сцены...</div>
+    
+    <div class="ui-panel">
+        <div style="text-align: center; margin-bottom: 15px;">
+            <h3>3D Анимация</h3>
+            <p style="opacity: 0.8; font-size: 12px; margin-top: 5px;">Управляйте сложной анимацией</p>
+        </div>
+        
+        <div class="controls">
+            <button class="btn" onclick="changeAnimation('rotate')">Вращение</button>
+            <button class="btn" onclick="changeAnimation('pulse')">Пульсация</button>
+            <button class="btn btn-secondary" onclick="changeBackground()">Сменить фон</button>
+            <button class="btn btn-secondary" onclick="addGeometry()">+ Фигура</button>
+        </div>
     </div>
 
     <script>
         // Инициализация Telegram Web App
         const tg = window.Telegram.WebApp;
-        tg.expand(); // Растянуть на весь экран
-        tg.enableClosingConfirmation(); // Подтверждение закрытия
+        tg.expand();
+        tg.ready();
 
-        function handleClick() {
-            // Действие при клике на кнопку
-            // Можно изменить на любое другое действие
-            tg.showPopup({
-                title: 'Поздравляю!',
-                message: 'Вы нажали на кнопку!',
-                buttons: [{ type: 'ok' }]
+        // Основные переменные Three.js
+        let scene, camera, renderer;
+        let geometries = [];
+        let currentAnimation = 'rotate';
+        let animationId;
+        let backgroundColors = [0x000000, 0x1a1a2e, 0x16213e, 0x0f3460];
+        let currentBgIndex = 0;
+
+        // Инициализация Three.js сцены
+        function initThreeJS() {
+            // Создание сцены
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(backgroundColors[currentBgIndex]);
+
+            // Создание камеры
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.z = 5;
+
+            // Создание рендерера
+            const container = document.getElementById('canvas-container');
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            container.appendChild(renderer.domElement);
+
+            // Добавление освещения
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(1, 1, 1);
+            scene.add(directionalLight);
+
+            // Создание начальной геометрии
+            createGeometry();
+
+            // Скрываем загрузчик
+            document.getElementById('loading').classList.add('hidden');
+
+            // Запуск анимации
+            animate();
+        }
+
+        // Создание новой 3D фигуры
+        function createGeometry() {
+            const geometryTypes = [
+                () => new THREE.IcosahedronGeometry(1, 0),
+                () => new THREE.OctahedronGeometry(1, 0),
+                () => new THREE.TorusKnotGeometry(0.8, 0.3, 100, 16),
+                () => new THREE.SphereGeometry(1, 32, 32),
+                () => new THREE.BoxGeometry(1.5, 1.5, 1.5)
+            ];
+
+            const materials = [
+                new THREE.MeshPhongMaterial({ 
+                    color: Math.random() * 0xffffff,
+                    shininess: 100,
+                    transparent: true,
+                    opacity: 0.9
+                }),
+                new THREE.MeshStandardMaterial({
+                    color: Math.random() * 0xffffff,
+                    metalness: 0.7,
+                    roughness: 0.2
+                }),
+                new THREE.MeshLambertMaterial({
+                    color: Math.random() * 0xffffff,
+                    transparent: true,
+                    opacity: 0.8
+                })
+            ];
+
+            const geometryType = geometryTypes[Math.floor(Math.random() * geometryTypes.length)];
+            const material = materials[Math.floor(Math.random() * materials.length)];
+
+            const mesh = new THREE.Mesh(geometryType(), material);
+            
+            // Случайная позиция
+            mesh.position.x = (Math.random() - 0.5) * 4;
+            mesh.position.y = (Math.random() - 0.5) * 4;
+            mesh.position.z = (Math.random() - 0.5) * 3;
+
+            // Случайный размер
+            const scale = 0.5 + Math.random() * 0.5;
+            mesh.scale.set(scale, scale, scale);
+
+            // Сохраняем данные для анимации
+            mesh.userData = {
+                speed: {
+                    x: (Math.random() - 0.5) * 0.02,
+                    y: (Math.random() - 0.5) * 0.02,
+                    z: (Math.random() - 0.5) * 0.02
+                },
+                pulseSpeed: 0.02 + Math.random() * 0.03,
+                originalScale: scale,
+                time: 0
+            };
+
+            scene.add(mesh);
+            geometries.push(mesh);
+
+            // Ограничиваем количество фигур
+            if (geometries.length > 8) {
+                const oldMesh = geometries.shift();
+                scene.remove(oldMesh);
+            }
+        }
+
+        // Сложная анимация
+        function animate() {
+            animationId = requestAnimationFrame(animate);
+
+            const time = Date.now() * 0.001;
+
+            geometries.forEach((mesh, index) => {
+                mesh.userData.time = time + index;
+
+                switch (currentAnimation) {
+                    case 'rotate':
+                        // Сложное вращение с разными осями
+                        mesh.rotation.x += mesh.userData.speed.x;
+                        mesh.rotation.y += mesh.userData.speed.y * 1.5;
+                        mesh.rotation.z += mesh.userData.speed.z * 0.5;
+                        
+                        // Добавляем немного "плавающего" движения
+                        mesh.position.y += Math.sin(time + index) * 0.005;
+                        break;
+
+                    case 'pulse':
+                        // Пульсирующая анимация
+                        const pulse = Math.sin(time * mesh.userData.pulseSpeed + index) * 0.3 + 1;
+                        mesh.scale.setScalar(mesh.userData.originalScale * pulse);
+                        
+                        // Медленное вращение
+                        mesh.rotation.x += 0.01;
+                        mesh.rotation.y += 0.008;
+                        break;
+
+                    case 'complex':
+                        // Комплексная комбинированная анимация
+                        mesh.rotation.x = time * 0.5 + index;
+                        mesh.rotation.y = time * 0.3 + index;
+                        
+                        const waveX = Math.sin(time * 0.002 + index) * 2;
+                        const waveY = Math.cos(time * 0.003 + index * 1.5) * 2;
+                        mesh.position.x = waveX;
+                        mesh.position.y = waveY;
+                        
+                        const scale = 0.8 + Math.sin(time * 0.004 + index) * 0.4;
+                        mesh.scale.setScalar(scale);
+                        break;
+                }
+
+                // Автоматическое изменение цвета со временем
+                if (mesh.material.color) {
+                    const hue = (time * 0.1 + index * 0.2) % 1;
+                    mesh.material.color.setHSL(hue, 0.8, 0.6);
+                }
+            });
+
+            // Медленное движение камеры
+            camera.position.x = Math.sin(time * 0.1) * 0.5;
+            camera.position.y = Math.cos(time * 0.1) * 0.5;
+            camera.lookAt(scene.position);
+
+            renderer.render(scene, camera);
+        }
+
+        // Функции управления анимацией
+        function changeAnimation(type) {
+            currentAnimation = type;
+            
+            // Плавный переход к новой анимации
+            geometries.forEach(mesh => {
+                mesh.userData.speed = {
+                    x: (Math.random() - 0.5) * 0.02,
+                    y: (Math.random() - 0.5) * 0.02,
+                    z: (Math.random() - 0.5) * 0.02
+                };
             });
         }
 
-        // Изменение темы (если нужно подстраиваться под тему Telegram)
+        function changeBackground() {
+            currentBgIndex = (currentBgIndex + 1) % backgroundColors.length;
+            scene.background = new THREE.Color(backgroundColors[currentBgIndex]);
+        }
+
+        function addGeometry() {
+            createGeometry();
+        }
+
+        // Обработчики изменения размера окна
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        window.addEventListener('resize', onWindowResize);
+
+        // Предотвращение масштабирования
+        function preventZoom(e) {
+            if (e.touches && e.touches.length > 1) {
+                e.preventDefault();
+            }
+        }
+
+        document.addEventListener('touchstart', preventZoom, { passive: false });
+        document.addEventListener('touchmove', preventZoom, { passive: false });
+
+        // Автоматическая подстройка под тему Telegram
         tg.onEvent('themeChanged', () => {
-            document.body.style.background = tg.themeParams.bg_color || '#2b2d31';
+            document.body.style.background = tg.themeParams.bg_color || '#000000';
+            document.body.style.color = tg.themeParams.text_color || '#ffffff';
         });
 
-        // Дополнительные настройки стиля через JavaScript:
-        // 1. tg.setHeaderColor('#your_color') - цвет заголовка
-        // 2. tg.setBackgroundColor('#your_color') - цвет фона
-    </script>
-</body>
-</html><!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simple TMA</title>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <style>
-        body {
-            margin: 0;
-            padding: 0;
-            /* 
-            Чтобы изменить фон всего приложения:
-            1. Замените #2b2d31 на любой цвет (например: #ff0000 для красного)
-            2. Или используйте картинку: background: url('your-image.jpg');
-            */
-            background: #229ED9;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            font-family: 'Segoe UI', sans-serif;
-        }
+        // Инициализация при загрузке
+        window.addEventListener('load', initThreeJS);
 
-        .container {
-            text-align: center;
-        }
-
-        .main-button {
-            /* 
-            Настройки кнопки:
-            - background: цвет кнопки
-            - color: цвет текста
-            - padding: размер кнопки
-            - border-radius: скругление углов
-            - font-size: размер текста
-            */
-            background: #007aff;
-            color: white;
-            border: none;
-            padding: 20px 40px;
-            border-radius: 15px;
-            font-size: 18px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-        }
-
-        /* Эффекты при наведении и нажатии */
-        .main-button:hover {
-            background: #0056cc;
-            transform: translateY(-2px);
-        }
-
-        .main-button:active {
-            transform: translateY(1px);
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <button class="main-button" onclick="handleClick()">Нажми меня</button>
-    </div>
-
-    <script>
-        // Инициализация Telegram Web App
-        const tg = window.Telegram.WebApp;
-        tg.expand(); // Растянуть на весь экран
-        tg.enableClosingConfirmation(); // Подтверждение закрытия
-
-        function handleClick() {
-            // Действие при клике на кнопку
-            // Можно изменить на любое другое действие
-            tg.showPopup({
-                title: 'Поздравляю!',
-                message: 'Вы нажали на кнопку!',
-                buttons: [{ type: 'ok' }]
-            });
-        }
-
-        // Изменение темы (если нужно подстраиваться под тему Telegram)
-        tg.onEvent('themeChanged', () => {
-            document.body.style.background = tg.themeParams.bg_color || '#2b2d31';
+        // Очистка при размонтировании
+        window.addEventListener('beforeunload', () => {
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+            }
         });
-
-        // Дополнительные настройки стиля через JavaScript:
-        // 1. tg.setHeaderColor('#your_color') - цвет заголовка
-        // 2. tg.setBackgroundColor('#your_color') - цвет фона
-    </script>
-</body>
-</html><!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simple TMA</title>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <style>
-        body {
-            margin: 0;
-            padding: 0;
-            /* 
-            Чтобы изменить фон всего приложения:
-            1. Замените #2b2d31 на любой цвет (например: #ff0000 для красного)
-            2. Или используйте картинку: background: url('your-image.jpg');
-            */
-            background: #229ED9;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            font-family: 'Segoe UI', sans-serif;
-        }
-
-        .container {
-            text-align: center;
-        }
-
-        .main-button {
-            /* 
-            Настройки кнопки:
-            - background: цвет кнопки
-            - color: цвет текста
-            - padding: размер кнопки
-            - border-radius: скругление углов
-            - font-size: размер текста
-            */
-            background: #007aff;
-            color: white;
-            border: none;
-            padding: 20px 40px;
-            border-radius: 15px;
-            font-size: 18px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-        }
-
-        /* Эффекты при наведении и нажатии */
-        .main-button:hover {
-            background: #0056cc;
-            transform: translateY(-2px);
-        }
-
-        .main-button:active {
-            transform: translateY(1px);
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <button class="main-button" onclick="handleClick()">Нажми меня</button>
-    </div>
-
-    <script>
-        // Инициализация Telegram Web App
-        const tg = window.Telegram.WebApp;
-        tg.expand(); // Растянуть на весь экран
-        tg.enableClosingConfirmation(); // Подтверждение закрытия
-
-        function handleClick() {
-            // Действие при клике на кнопку
-            // Можно изменить на любое другое действие
-            tg.showPopup({
-                title: 'Поздравляю!',
-                message: 'Вы нажали на кнопку!',
-                buttons: [{ type: 'ok' }]
-            });
-        }
-
-        // Изменение темы (если нужно подстраиваться под тему Telegram)
-        tg.onEvent('themeChanged', () => {
-            document.body.style.background = tg.themeParams.bg_color || '#2b2d31';
-        });
-
-        // Дополнительные настройки стиля через JavaScript:
-        // 1. tg.setHeaderColor('#your_color') - цвет заголовка
-        // 2. tg.setBackgroundColor('#your_color') - цвет фона
     </script>
 </body>
 </html>
