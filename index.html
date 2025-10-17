@@ -1,168 +1,91 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Telegram Mini App - No Zoom</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple TMA</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        /* Базовые стили для запрета взаимодействий с масштабированием */
-        * {
-            -webkit-touch-callout: none;
-            -webkit-user-select: none;
-            -moz-user-select: none;
-            -ms-user-select: none;
-            user-select: none;
-            -webkit-tap-highlight-color: transparent;
-            -webkit-text-size-adjust: none;
-            -moz-text-size-adjust: none;
-            -ms-text-size-adjust: none;
-            text-size-adjust: none;
-            touch-action: manipulation;
-        }
-
-        html, body {
+        body {
             margin: 0;
             padding: 0;
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            position: fixed;
-            top: 0;
-            left: 0;
-            /* Фон приложения */
-            background: var(--tg-theme-bg-color, #2b2d31);
-            color: var(--tg-theme-text-color, #ffffff);
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            /* 
+            Чтобы изменить фон всего приложения:
+            1. Замените #2b2d31 на любой цвет (например: #ff0000 для красного)
+            2. Или используйте картинку: background: url('your-image.jpg');
+            */
+            background: #2b2d31;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Segoe UI', sans-serif;
         }
 
         .container {
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            padding: 20px;
             text-align: center;
         }
 
-        h1 {
-            margin-bottom: 20px;
-            font-size: 24px;
-        }
-
-        .btn {
-            background: var(--tg-theme-button-color, #007aff);
-            color: var(--tg-theme-button-text-color, #ffffff);
+        .main-button {
+            /* 
+            Настройки кнопки:
+            - background: цвет кнопки
+            - color: цвет текста
+            - padding: размер кнопки
+            - border-radius: скругление углов
+            - font-size: размер текста
+            */
+            background: #007aff;
+            color: white;
             border: none;
-            padding: 15px 30px;
-            border-radius: 10px;
-            font-size: 16px;
+            padding: 20px 40px;
+            border-radius: 15px;
+            font-size: 18px;
             cursor: pointer;
-            margin: 10px;
-            transition: background 0.2s;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
         }
 
-        .btn:active {
-            background: var(--tg-theme-button-color, #0056cc);
-            transform: scale(0.98);
+        /* Эффекты при наведении и нажатии */
+        .main-button:hover {
+            background: #0056cc;
+            transform: translateY(-2px);
         }
 
-        .info {
-            margin-top: 20px;
-            padding: 15px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 10px;
-            max-width: 300px;
+        .main-button:active {
+            transform: translateY(1px);
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Телеграм Mini App</h1>
-        <p>Масштабирование отключено</p>
-        
-        <button class="btn" onclick="showAlert()">Тестовая кнопка</button>
-        <button class="btn" onclick="toggleExpansion()">Свернуть/Развернуть</button>
-        
-        <div class="info">
-            <p>Попробуйте увеличить двумя пальцами - не получится!</p>
-        </div>
+        <button class="main-button" onclick="handleClick()">Нажми меня</button>
     </div>
 
     <script>
         // Инициализация Telegram Web App
         const tg = window.Telegram.WebApp;
-        
-        // Расширяем на весь экран
-        tg.expand();
-        tg.ready();
+        tg.expand(); // Растянуть на весь экран
+        tg.enableClosingConfirmation(); // Подтверждение закрытия
 
-        // Дополнительные настройки для запрета масштабирования
-        tg.disableVerticalSwipes();
-        
-        // Функции для обработки жестов масштабирования
-        function preventZoom(e) {
-            if (e.touches.length > 1) {
-                e.preventDefault();
-                e.stopPropagation();
-            }
-        }
-
-        function preventDoubleTapZoom(e) {
-            const now = new Date().getTime();
-            if (now - lastTouchEnd <= 300) {
-                e.preventDefault();
-            }
-        }
-
-        let lastTouchEnd = 0;
-        
-        // Добавляем обработчики событий
-        document.addEventListener('touchstart', preventZoom, { passive: false });
-        document.addEventListener('touchend', function(e) {
-            lastTouchEnd = new Date().getTime();
-        }, { passive: false });
-        document.addEventListener('touchmove', preventZoom, { passive: false });
-        document.addEventListener('gesturestart', (e) => e.preventDefault());
-        document.addEventListener('gesturechange', (e) => e.preventDefault());
-        document.addEventListener('gestureend', (e) => e.preventDefault());
-        
-        // Запрет контекстного меню
-        document.addEventListener('contextmenu', (e) => e.preventDefault());
-
-        // Функции приложения
-        function showAlert() {
+        function handleClick() {
+            // Действие при клике на кнопку
+            // Можно изменить на любое другое действие
             tg.showPopup({
-                title: 'Успех!',
-                message: 'Масштабирование отключено!',
+                title: 'Поздравляю!',
+                message: 'Вы нажали на кнопку!',
                 buttons: [{ type: 'ok' }]
             });
         }
 
-        function toggleExpansion() {
-            if (tg.isExpanded) {
-                tg.close();
-            } else {
-                tg.expand();
-            }
-        }
-
-        // Автоматическая подстройка под тему Telegram
+        // Изменение темы (если нужно подстраиваться под тему Telegram)
         tg.onEvent('themeChanged', () => {
             document.body.style.background = tg.themeParams.bg_color || '#2b2d31';
-            document.body.style.color = tg.themeParams.text_color || '#ffffff';
         });
 
-        // Принудительная установка масштаба 1.0
-        function setScaleToOne() {
-            const viewport = document.querySelector('meta[name="viewport"]');
-            viewport.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
-        }
-        
-        // Вызываем при загрузке и при изменении размера
-        setScaleToOne();
-        window.addEventListener('resize', setScaleToOne);
+        // Дополнительные настройки стиля через JavaScript:
+        // 1. tg.setHeaderColor('#your_color') - цвет заголовка
+        // 2. tg.setBackgroundColor('#your_color') - цвет фона
     </script>
 </body>
 </html>
