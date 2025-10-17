@@ -1,0 +1,8 @@
+// Блокировка мультитач-жестов
+document.addEventListener('touchstart', preventZoom, { passive: false });
+
+// Блокировка жестов масштабирования
+document.addEventListener('gesturestart', (e) => e.preventDefault());
+
+// Запрет быстрого двойного тапа
+document.addEventListener('touchend', preventDoubleTapZoom);
