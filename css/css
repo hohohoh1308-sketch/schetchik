@@ -14,3 +14,12 @@ html, body {
     height: 100%;      /* Фиксированная высота  */
 }
 
+html, body {
+    width: 100vh; /* Меняем ширину и высоту местами */
+    height: 100vw;
+    transform: rotate(90deg);
+    transform-origin: 0 0;
+    position: fixed;
+    top: 0;
+    left: 100vw; /* Сдвигаем вправо на высоту viewport */
+}
