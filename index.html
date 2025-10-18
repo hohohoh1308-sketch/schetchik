@@ -146,14 +146,22 @@
         let geometries = [];
         let currentAnimation = 'rotate';
         let animationId;
-        let backgroundColors =  value: 'https://yandex.ru/images/search?img_url=https%3A%2F%2Fonlinelearning.csuohio.edu%2Fsites%2Fdefault%2Ffiles%2F2024-08%2Fspace-law-hero.jpg&lr=56&p=1&pos=3&rpt=simage&source=serp&stype=image&text=%D1%84%D0%BE%D1%82%D0%BE%20%D0%BA%D0%BE%D1%81%D0%BC%D0%BE%D1%81%D0%B0';
+        
+        // МАССИВ ФОНОВЫХ ИЗОБРАЖЕНИЙ - ЗДЕСЬ МОЖНО ДОБАВИТЬ СВОИ ССЫЛКИ НА КАРТИНКИ
+        const backgroundImages = [
+            'https://wallpapers.com/images/hd/4k-universe-blue-nebula-uywhlwxjrw9e9gcu.jpg', // Космос 1
+            
+        ];
         let currentBgIndex = 0;
+        let textureLoader = new THREE.TextureLoader();
 
         // Инициализация Three.js сцены
         function initThreeJS() {
             // Создание сцены
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(backgroundColors[currentBgIndex]);
+            
+            // Установка фонового изображения
+            setBackgroundImage(currentBgIndex);
 
             // Создание камеры
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -193,6 +201,13 @@
             animate();
         }
 
+        // Функция для установки фонового изображения
+        function setBackgroundImage(index) {
+            textureLoader.load(backgroundImages[index], function(texture) {
+                scene.background = texture;
+            });
+        }
+
         // Обработчик кликов по canvas
         function onCanvasClick(event) {
             // Получаем координаты мыши в нормализованных device coordinates (-1 to +1)
@@ -219,9 +234,7 @@
                 });
             }
         }
-        const backgroundOptions = [
-            { type: 'image', value: 'https://www.bing.com/images/search?view=detailV2&ccid=KMHMy%2FWq&id=BB963FF9A3369CAEC6EAFFEAB9C25FEFF9CC0EA1&thid=OIP.KMHMy_WqNF1Sif9ncq3GXAHaIF&mediaurl=https%3A%2F%2Fnaked-science.ru%2Fwp-content%2Fuploads%2F2016%2F04%2Farticle_0_b3247_799fb573_orig.jpg&cdnurl=https%3A%2F%2Fth.bing.com%2Fth%2Fid%2FR.28c1cccbf5aa345d5289ff6772adc65c%3Frik%3DoQ7M%252be9fwrnq%252fw%26pid%3DImgRaw%26r%3D0&exph=1024&expw=938&q=%d1%84%d0%be%d1%82%d0%be+%d0%ba%d0%be%d1%81%d0%bc%d0%be%d1%81%d0%b0+%d1%81%d1%81%d1%8b%d0%bb%d0%ba%d0%b0&form=IRPRST&ck=D2C8343A988291D296CBF3C7B06D1A10&selectedindex=2&itb=0&ajaxhist=0&ajaxserp=0&vt=0&sim=11', name: 'Космос' },
-        ];
+
         // Создание новой 3D фигуры
         function createGeometry() {
             const geometryTypes = [
@@ -376,8 +389,8 @@
         }
 
         function changeBackground() {
-            currentBgIndex = (currentBgIndex + 1) % backgroundColors.length;
-            scene.background = new THREE.Color(backgroundColors[currentBgIndex]);
+            currentBgIndex = (currentBgIndex + 1) % backgroundImages.length;
+            setBackgroundImage(currentBgIndex);
         }
 
         function addGeometry() {
