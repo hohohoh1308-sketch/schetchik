@@ -23,3 +23,35 @@ html, body {
     top: 0;
     left: 100vw; /* Сдвигаем вправо на высоту viewport */
 }
+.orientation-message {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.95);
+    z-index: 1000;
+    color: white;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    text-align: center;
+    padding: 20px;
+    
+    /* ДОБАВЬТЕ ЭТИ СТРОКИ ДЛЯ ПОЗИЦИОНИРОВАНИЯ */
+    justify-content: flex-start; /* Изменяем выравнивание по вертикали */
+    padding-top: 30%; /* Сдвигаем весь контент вниз по оси Y */
+}
+
+.orientation-message p {
+    font-size: 20px;
+    line-height: 1.5;
+    opacity: 0.9;
+    max-width: 80%;
+    color: #e0e0e0;
+    
+    /* ДОБАВЬТЕ ЭТИ СТРОКИ ДЛЯ СДВИГА ТЕКСТА */
+    margin-top: 20px; /* Отступ сверху для параграфа */
+    transform: translateX(50px); /* Сдвиг по оси X (вправо) */
+}
