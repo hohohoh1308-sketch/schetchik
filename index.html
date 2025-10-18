@@ -22,20 +22,19 @@
 
         /* Принудительная горизонтальная ориентация */
         html, body {
-            width: 100vh; /* Меняем ширину и высоту местами */
+            width: 100vh;
             height: 100vw;
             transform: rotate(90deg);
             transform-origin: 0 0;
             position: fixed;
             top: 0;
-            left: 100vw; /* Сдвигаем вправо на высоту viewport */
+            left: 100vw;
             overflow: hidden;
             background: var(--tg-theme-bg-color, #000000);
             color: var(--tg-theme-text-color, #ffffff);
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         }
 
-        /* Для устройств, которые уже в альбомной ориентации */
         @media (orientation: landscape) {
             html, body {
                 width: 100vw;
@@ -46,6 +45,70 @@
             }
         }
 
+        /* Стили для сообщения о перевороте */
+        .orientation-message {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 1000;
+            color: white;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .orientation-message h2 {
+            font-size: 32px; /* Высота заголовка */
+            margin-bottom: 25px;
+            font-weight: bold;
+            line-height: 1.2;
+            color: #ffffff;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+
+        .orientation-message p {
+            font-size: 20px; /* Высота основного текста */
+            line-height: 1.5;
+            opacity: 0.9;
+            max-width: 80%;
+            color: #e0e0e0;
+        }
+
+        /* Анимация появления */
+        .orientation-message {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        /* Иконка переворота (опционально) */
+        .rotate-icon {
+            font-size: 60px;
+            margin-bottom: 20px;
+            animation: rotate 2s infinite ease-in-out;
+        }
+
+        @keyframes rotate {
+            0%, 100% { transform: rotate(0deg); }
+            50% { transform: rotate(90deg); }
+        }
+
+        @media (orientation: portrait) and (max-width: 768px) {
+            .orientation-message {
+                display: flex;
+            }
+        }
+
+        /* Остальные стили остаются без изменений */
         #canvas-container {
             position: absolute;
             top: 0;
@@ -70,7 +133,6 @@
             border: 1px solid rgba(255, 255, 255, 0.2);
         }
 
-        /* Поворачиваем UI-панель обратно для правильного отображения */
         @media (orientation: portrait) {
             .ui-panel {
                 transform: translateX(-50%) rotate(-90deg);
@@ -132,37 +194,14 @@
             font-size: 14px;
             opacity: 0.8;
         }
-
-        /* Сообщение о необходимости горизонтальной ориентации */
-        .orientation-message {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background: rgba(0, 0, 0, 0.9);
-            z-index: 1000;
-            color: white;
-            justify-content: center;
-            align-items: center;
-            flex-direction: column;
-            text-align: center;
-            padding: 20px;
-        }
-
-        @media (orientation: portrait) and (max-width: 768px) {
-            .orientation-message {
-                display: flex;
-            }
-        }
     </style>
 </head>
 <body>
     <!-- Сообщение о необходимости горизонтальной ориентации -->
     <div class="orientation-message" id="orientationMessage">
-        <h2>Пожалуйста, переверните устройство</h2>
-        <p>Для правильной работы приложения используйте горизонтальную ориентацию</p>
+        <div class="rotate-icon">🔄</div>
+        <h2>Переверните телефон</h2>
+        <p>Игра работает только в горизонтальном режиме</p>
     </div>
 
     <div id="canvas-container"></div>
@@ -194,20 +233,10 @@
 
         // Блокировка ориентации
         function lockOrientation() {
-            // Пытаемся заблокировать ориентацию через API
             if (screen.orientation && screen.orientation.lock) {
                 screen.orientation.lock('landscape').catch(function(error) {
                     console.log('Orientation lock failed: ', error);
                 });
-            }
-            
-            // Для iOS и других устройств
-            if (window.screen && window.screen.lockOrientation) {
-                window.screen.lockOrientation('landscape');
-            } else if (window.screen && window.screen.mozLockOrientation) {
-                window.screen.mozLockOrientation('landscape');
-            } else if (window.screen && window.screen.msLockOrientation) {
-                window.screen.msLockOrientation('landscape');
             }
         }
 
@@ -217,9 +246,8 @@
         let currentAnimation = 'rotate';
         let animationId;
         
-        // МАССИВ ФОНОВЫХ ИЗОБРАЖЕНИЙ - ЗДЕСЬ МОЖНО ДОБАВИТЬ СВОИ ССЫЛКИ НА КАРТИНКИ
         const backgroundImages = [
-            'https://wallpapers.com/images/hd/4k-universe-blue-nebula-uywhlwxjrw9e9gcu.jpg', // Космос 1
+            'https://wallpapers.com/images/hd/4k-universe-blue-nebula-uywhlwxjrw9e9gcu.jpg',
         ];
         let currentBgIndex = 0;
         let textureLoader = new THREE.TextureLoader();
@@ -292,7 +320,6 @@
             const rect = renderer.domElement.getBoundingClientRect();
             const isPortrait = window.innerHeight > window.innerWidth;
             
-            // Корректируем координаты в зависимости от ориентации
             if (isPortrait) {
                 mouse.x = ((event.clientY - rect.top) / rect.height) * 2 - 1;
                 mouse.y = -((event.clientX - rect.left) / rect.width) * 2 + 1;
@@ -301,18 +328,13 @@
                 mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
             }
 
-            // Обновляем луч рейкастера
             raycaster.setFromCamera(mouse, camera);
-
-            // Проверяем пересечения с объектами
             const intersects = raycaster.intersectObjects(scene.children);
 
             if (intersects.length > 0) {
-                // Нашли пересечение - удаляем первый попавшийся объект
                 const objectToRemove = intersects[0].object;
                 removeGeometry(objectToRemove);
                 
-                // Показываем уведомление в Telegram
                 tg.showPopup({
                     title: 'Фигура удалена!',
                     message: 'Вы кликнули на фигуру и она была удалена',
@@ -356,16 +378,13 @@
 
             const mesh = new THREE.Mesh(geometryType(), material);
             
-            // Случайная позиция
             mesh.position.x = (Math.random() - 0.5) * 7;
             mesh.position.y = (Math.random() - 0.5) * 9;
             mesh.position.z = (Math.random() - 0.5) * 6;
 
-            // Случайный размер
             const scale = 0.5 + Math.random() * 0.4;
             mesh.scale.set(scale, scale, scale);
 
-            // Сохраняем данные для анимации
             mesh.userData = {
                 speed: {
                     x: (Math.random() - 0.5) * 0.02,
@@ -381,7 +400,6 @@
             scene.add(mesh);
             geometries.push(mesh);
 
-            // Ограничиваем количество фигур
             if (geometries.length > 5) {
                 const oldMesh = geometries.shift();
                 scene.remove(oldMesh);
@@ -390,12 +408,9 @@
 
         // Удаление конкретной фигуры
         function removeGeometry(mesh) {
-            // Находим индекс фигуры в массиве
             const index = geometries.indexOf(mesh);
             if (index !== -1) {
-                // Удаляем из массива
                 geometries.splice(index, 1);
-                // Удаляем из сцены
                 scene.remove(mesh);
             }
         }
@@ -411,48 +426,26 @@
 
                 switch (currentAnimation) {
                     case 'rotate':
-                        // Сложное вращение с разными осями
                         mesh.rotation.x += mesh.userData.speed.x;
                         mesh.rotation.y += mesh.userData.speed.y * 1.5;
                         mesh.rotation.z += mesh.userData.speed.z * 0.5;
-                        
-                        // Добавляем немного "плавающего" движения
                         mesh.position.y += Math.sin(time + index) * 0.005;
                         break;
 
                     case 'pulse':
-                        // Пульсирующая анимация
                         const pulse = Math.sin(time * mesh.userData.pulseSpeed + index) * 0.3 + 1;
                         mesh.scale.setScalar(mesh.userData.originalScale * pulse);
-                        
-                        // Медленное вращение
                         mesh.rotation.x += 0.02;
                         mesh.rotation.y += 0.01;
                         break;
-
-                    case 'complex':
-                        // Комплексная комбинированная анимация
-                        mesh.rotation.x = time * 0.5 + index;
-                        mesh.rotation.y = time * 0.3 + index;
-                        
-                        const waveX = Math.sin(time * 0.002 + index) * 2;
-                        const waveY = Math.cos(time * 0.003 + index * 1.5) * 2;
-                        mesh.position.x = waveX;
-                        mesh.position.y = waveY;
-                        
-                        const scale = 0.8 + Math.sin(time * 0.004 + index) * 0.4;
-                        mesh.scale.setScalar(scale);
-                        break;
                 }
 
-                // Автоматическое изменение цвета со временем
                 if (mesh.material.color) {
                     const hue = (time * 0.1 + index * 0.2) % 1;
                     mesh.material.color.setHSL(hue, 0.8, 0.6);
                 }
             });
 
-            // Медленное движение камеры
             camera.position.x = Math.sin(time * 0.1) * 0.5;
             camera.position.y = Math.cos(time * 0.1) * 0.5;
             camera.lookAt(scene.position);
@@ -464,7 +457,6 @@
         function changeAnimation(type) {
             currentAnimation = type;
             
-            // Плавный переход к новой анимации
             geometries.forEach(mesh => {
                 mesh.userData.speed = {
                     x: (Math.random() - 0.5) * 0.02,
@@ -512,9 +504,7 @@
 
         // Инициализация при загрузке
         window.addEventListener('load', function() {
-            // Пытаемся заблокировать ориентацию
             lockOrientation();
-            // Инициализируем Three.js
             initThreeJS();
         });
 
