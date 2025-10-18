@@ -39,6 +39,7 @@
             width: 100%;
             height: 100%;
             z-index: 1;
+            cursor: pointer;
         }
 
         .ui-panel {
@@ -103,6 +104,13 @@
         .hidden {
             display: none;
         }
+
+        .info-text {
+            text-align: center;
+            margin-bottom: 15px;
+            font-size: 14px;
+            opacity: 0.8;
+        }
     </style>
 </head>
 <body>
@@ -113,6 +121,10 @@
         <div style="text-align: center; margin-bottom: 15px;">
             <h3>3D Анимация</h3>
             <p style="opacity: 0.8; font-size: 12px; margin-top: 5px;">Управляйте сложной анимацией</p>
+        </div>
+
+        <div class="info-text">
+            Нажмите на любую фигуру, чтобы удалить её
         </div>
         
         <div class="controls">
@@ -130,7 +142,7 @@
         tg.ready();
 
         // Основные переменные Three.js
-        let scene, camera, renderer;
+        let scene, camera, renderer, raycaster, mouse;
         let geometries = [];
         let currentAnimation = 'rotate';
         let animationId;
@@ -154,6 +166,10 @@
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
             container.appendChild(renderer.domElement);
 
+            // Инициализация Raycaster для обнаружения кликов
+            raycaster = new THREE.Raycaster();
+            mouse = new THREE.Vector2();
+
             // Добавление освещения
             const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
             scene.add(ambientLight);
@@ -164,12 +180,44 @@
 
             // Создание начальной геометрии
             createGeometry();
+            createGeometry();
+            createGeometry();
 
             // Скрываем загрузчик
             document.getElementById('loading').classList.add('hidden');
 
+            // Добавляем обработчик кликов
+            container.addEventListener('click', onCanvasClick, false);
+
             // Запуск анимации
             animate();
+        }
+
+        // Обработчик кликов по canvas
+        function onCanvasClick(event) {
+            // Получаем координаты мыши в нормализованных device coordinates (-1 to +1)
+            const rect = renderer.domElement.getBoundingClientRect();
+            mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+            // Обновляем луч рейкастера
+            raycaster.setFromCamera(mouse, camera);
+
+            // Проверяем пересечения с объектами
+            const intersects = raycaster.intersectObjects(scene.children);
+
+            if (intersects.length > 0) {
+                // Нашли пересечение - удаляем первый попавшийся объект
+                const objectToRemove = intersects[0].object;
+                removeGeometry(objectToRemove);
+                
+                // Показываем уведомление в Telegram
+                tg.showPopup({
+                    title: 'Фигура удалена!',
+                    message: 'Вы кликнули на фигуру и она была удалена',
+                    buttons: [{ type: 'ok' }]
+                });
+            }
         }
 
         // Создание новой 3D фигуры
@@ -179,7 +227,10 @@
                 () => new THREE.OctahedronGeometry(1, 0),
                 () => new THREE.TorusKnotGeometry(0.8, 0.3, 100, 16),
                 () => new THREE.SphereGeometry(1, 32, 32),
-                () => new THREE.BoxGeometry(1.5, 1.5, 1.5)
+                () => new THREE.BoxGeometry(1.5, 1.5, 1.5),
+                () => new THREE.ConeGeometry(1, 2, 8),
+                () => new THREE.CylinderGeometry(0.8, 0.8, 1.5, 16),
+                () => new THREE.TetrahedronGeometry(1, 0)
             ];
 
             const materials = [
@@ -207,12 +258,12 @@
             const mesh = new THREE.Mesh(geometryType(), material);
             
             // Случайная позиция
-            mesh.position.x = (Math.random() - 0.5) * 5;
-            mesh.position.y = (Math.random() - 0.5) * 7;
+            mesh.position.x = (Math.random() - 0.5) * 7;
+            mesh.position.y = (Math.random() - 0.5) * 9;
             mesh.position.z = (Math.random() - 0.5) * 6;
 
             // Случайный размер
-            const scale = 0.5 + Math.random() * 0.3;
+            const scale = 0.5 + Math.random() * 0.4;
             mesh.scale.set(scale, scale, scale);
 
             // Сохраняем данные для анимации
@@ -224,7 +275,8 @@
                 },
                 pulseSpeed: 0.02 + Math.random() * 0.03,
                 originalScale: scale,
-                time: 0
+                time: 0,
+                type: geometryType.name || 'Unknown'
             };
 
             scene.add(mesh);
@@ -234,6 +286,18 @@
             if (geometries.length > 5) {
                 const oldMesh = geometries.shift();
                 scene.remove(oldMesh);
+            }
+        }
+
+        // Удаление конкретной фигуры
+        function removeGeometry(mesh) {
+            // Находим индекс фигуры в массиве
+            const index = geometries.indexOf(mesh);
+            if (index !== -1) {
+                // Удаляем из массива
+                geometries.splice(index, 1);
+                // Удаляем из сцены
+                scene.remove(mesh);
             }
         }
 
